@@ -52,4 +52,36 @@ $app->singleton(
 |
 */
 
+$app->afterBootstrapping(
+    'Illuminate\Foundation\Bootstrap\SetRequestForConsole',
+    function($app) {
+        // server protocol
+        $protocol = empty($_SERVER['HTTPS']) ? 'http' : 'https';
+        // domain name
+        $domain = $_SERVER['SERVER_NAME'];
+        // server port
+        $port = $_SERVER['SERVER_PORT'];
+        $disp_port = ($protocol == 'http' && $port == 80 || $protocol == 'https' && $port == 443) ? '' : ":$port";
+        // put em all together to get the complete base URL
+        $url = "${protocol}://${domain}${disp_port}";
+
+        $uri = $app->make('config')->get('app.url', $url);
+
+        $components = parse_url($uri);
+
+        $server = $_SERVER;
+
+        if (isset($components['path'])) {
+            $server = array_merge($server, [
+                'SCRIPT_FILENAME' => $components['path'],
+                'SCRIPT_NAME' => $components['path'],
+            ]);
+        }
+
+        $app->instance('request', Request::create(
+            $uri, 'GET', [], [], [], $server
+        ));
+    }
+);
+
 return $app;
